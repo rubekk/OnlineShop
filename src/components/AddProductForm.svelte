@@ -1,54 +1,98 @@
 <script>
-    import { products } from "$lib/store.js";
+    import { products, editing } from "$lib/store.js";
+    import { initializeApp } from "firebase/app";
+    import { getFirestore, collection, addDoc } from "firebase/firestore";
+    import { firebaseConfig } from "$lib/firebaseConfig.js";
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app); 
+    const colRef= collection(db, "products");
 
     let productsData= [],
         productData={
+            pid: 0,
             name: "",
-            price: 0,
+            price: "",
+            discountedPrice: "",
             category: "",
             description: "",
             images: [],
             visible: true
-        };
+        },
+        editData= { edit: false, pid: 0 };
 
     products.subscribe(value => productsData= value);
+    editing.subscribe(value => editData= value);
 
     const handleSubmit= ()=>{
         if(productData.name && productData.price && productData.category){
-            productsData.push(productData);
-            productsData= [...productsData]
-
-            products.set(productsData);
-
-            productData= {
+            productData.pid= Date.now();
+            if(!productData.discountedPrice) productData.discountedPrice= productData.price;
+            
+            productData= Object.assign({
+                pid: 0,
                 name: "",
-                price: 0,
+                price: "",
+                discountedPrice: "",
                 category: "",
                 description: "",
                 images: [],
                 visible: true
-            }
-
-            console.log(productsData)
+            })
         }
     }
+
+    const triggerEdit= ()=>{
+        if(!editData.edit) return;
+
+        productData= productsData.find(product =>{ return product.pid==editData.pid})
+    }
+
+    const handleEdit= ()=>{
+        if(productData.name && productData.price && productData.category){
+            let eIndex= productsData.findIndex(product => product.pid==editData.pid);
+
+            productsData[eIndex]= productData;
+            products.set(productsData);
+
+            productData= Object.assign({
+                pid: 0,
+                name: "",
+                price: 0,
+                discountedPrice: 0,
+                category: "",
+                description: "",
+                images: [],
+                visible: true
+            })
+
+            editing.set({ edit: false, pid: 0 });
+        }
+    }
+
+    $: editData && triggerEdit();
 </script>
 
 <div class="apf-container">
-    <!-- <button class="add-product-btn">Add Product</button> -->
     <form class="add-product-form">
         <h2>Add a product</h2>
         <div class="inp-group">
             <label for="">Product name</label>
-            <input bind:value={productData.name} type="text" placeholder="eg: Jai Ho Chamal" required>
+            <input bind:value={productData.name} type="text" placeholder="eg: Jai Ho Chamal">
         </div>
-        <div class="inp-group">
-            <label for="">Price (Rs.)</label>
-            <input bind:value={productData.price} type="number" placeholder="eg: 2450" required>
+        <div class="inp-row">
+            <div class="inp-group">
+                <label for="">Price (Rs.)</label>
+                <input bind:value={productData.price} type="number" placeholder="eg: 2450">
+            </div>
+            <div class="inp-group">
+                <label for="">Discounted Price</label>
+                <input bind:value={productData.price} type="number" placeholder="eg: 2450">
+            </div>
         </div>
         <div class="inp-group">
             <label for="">Category</label>
-            <input bind:value={productData.category} type="text" placeholder="eg: Rice" required>
+            <input bind:value={productData.category} type="text" placeholder="eg: Rice">
         </div>
         <div class="inp-group">
             <label for="">Description</label>
@@ -56,9 +100,13 @@
         </div>
         <div class="inp-group">
             <label for="">Upload image</label>
-            <input type="file" required>
+            <input type="file">
         </div>
+        {#if editData.edit}
+        <button on:click={handleEdit} class="add-btn" type="submit">Edit</button>
+        {:else}
         <button on:click={handleSubmit} class="add-btn" type="submit">Add</button>
+        {/if}
     </form>
 </div>
 
@@ -74,12 +122,22 @@
         margin-bottom: 1rem;
         text-align: center;
     }
+    .inp-row{
+        display: flex;
+    }
     .inp-group{
+        width: 400px;
         position: relative;
+    }
+    .inp-row .inp-group{
+        width: 50%;
+    }
+    .inp-row .inp-group:nth-child(1){
+        margin-right: .5rem;
     }
     input, textarea{
         margin: .75rem 0;
-        width: 400px;
+        width: 100%;
         border-radius: 6px;
         line-height: 6ex;
         position: relative;

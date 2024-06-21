@@ -1,9 +1,26 @@
 <script>
-    import { products } from "$lib/store.js";
+    import { products, editing } from "$lib/store.js";
 
     let productsData= [];
 
     products.subscribe(value => productsData= value);
+
+    const handleEdit= pid=> editing.set({edit: true, pid});
+
+    const handleHide= pid=> {
+        let eIndex= productsData.findIndex(product => product.pid==pid);
+
+        productsData[eIndex].visible= !productsData[eIndex].visible;
+        products.set(productsData);
+    }
+
+    const handleDelete= pid=> {
+        let eIndex= productsData.findIndex(product => product.pid==pid);
+
+        productsData.splice(eIndex, 1);
+        productsData= [...productsData];
+        products.set(productsData);
+    }
 </script>
 
 <div class="sp-container">
@@ -26,7 +43,11 @@
                 <td>{product.name}</td>
                 <td>{product.price}</td>
                 <td>{product.category}</td>
-                <td>Edit Hide Delete</td>
+                <td>
+                    <i on:click={()=> handleEdit(product.pid)} class="fa-solid fa-pen-to-square"></i>
+                    <i on:click={()=> handleHide(product.pid)} class="fa-solid fa-eye-slash"></i>
+                    <i on:click={()=> handleDelete(product.pid)} class="fa-solid fa-trash"></i>
+                </td>
             </tr>
         {/each}
         </tbody>
